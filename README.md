@@ -1,188 +1,336 @@
-<div align="center">
+# 🛰️ Geospatial Site Selection & Route Optimization
 
-# 🛰️ Optimal Moon Landing
+> **A C++ geospatial analytics pipeline that processes lunar terrain datasets to identify the optimal habitat site, mining site, and the shortest feasible power cable route using statistical analysis, spatial clustering, and A* pathfinding.**
 
-### Geospatial Site Selection & Route Optimization
+<p align="center">
 
-*A geospatial data analytics pipeline built in C++ that processes high-resolution lunar terrain datasets to identify the optimal habitat site, mining site, and shortest feasible power cable route.*
+![C++](https://img.shields.io/badge/C++-17-blue.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows%20|%20Linux-success)
+![Algorithms](https://img.shields.io/badge/Algorithms-A*%20|%202D%20Prefix%20Sums-orange)
+![Data](https://img.shields.io/badge/Data-CSV%20Analytics-purple)
+![Visualization](https://img.shields.io/badge/Visualization-BMP%20Heatmaps-red)
 
-![Comparative Dashboard](screenshots/comparative_dashboard.png)
-
-![C++](https://img.shields.io/badge/C++-17-blue?style=for-the-badge&logo=c%2B%2B)
-![CSV](https://img.shields.io/badge/Data-CSV-success?style=for-the-badge)
-![Algorithms](https://img.shields.io/badge/A*-Pathfinding-orange?style=for-the-badge)
-![Analytics](https://img.shields.io/badge/Data-Analytics-purple?style=for-the-badge)
-
-</div>
+</p>
 
 ---
 
-# 📖 Overview
+# 🌙 Project Overview
 
-This project simulates a **lunar mission planning system** by analyzing four large geospatial datasets representing terrain elevation, illumination, water-ice probability, and communication visibility.
+Planning infrastructure on the Moon requires balancing multiple environmental constraints instead of optimizing a single metric.
 
-The pipeline performs:
+This project analyzes **four 500 × 500 lunar terrain datasets** to automatically determine:
 
-- 📂 CSV Processing & Validation
-- 🧹 Data Cleaning
-- 📊 Statistical Analysis
-- 📍 Candidate Site Selection
-- 🛰️ Multi-Criteria Optimization
-- 🛣️ A* Route Planning
-- 🎨 Heatmap & Dashboard Generation
+- 🏠 Optimal Habitat Location
+- 🧊 Optimal Mining Location
+- ⚡ Shortest Feasible Power Cable Route
+- 📊 Terrain Heatmaps & Comparative Dashboard
 
-The complete solution is implemented entirely in **modern C++17** without using external GIS or visualization libraries.
+The project follows an **ETL-style data analytics pipeline**:
+
+```text
+Extract → Clean → Transform → Analyze → Optimize → Visualize
+```
 
 ---
 
 # ✨ Key Features
 
-- ✅ Processes **1,000,000+ terrain values**
-- ✅ CSV Parsing & Data Validation
-- ✅ ETL-style Data Processing Pipeline
-- ✅ Sliding Window Statistics using **2D Prefix Sums**
-- ✅ Terrain Roughness Analysis (Standard Deviation)
-- ✅ Spatial Clustering for Candidate Diversity
-- ✅ Multi-Criteria Site Scoring
-- ✅ A* Pathfinding with 22 m Elevation Constraint
-- ✅ Automatic BMP Heatmap Generation
-- ✅ Interactive Comparative Dashboard
+- 📂 CSV Processing & Validation
+- 🧹 Data Cleaning & Missing Value Handling
+- 📊 Statistical Analysis (Mean & Standard Deviation)
+- ⚡ ETL-style Data Processing Pipeline
+- 🧠 2D Prefix Sum Optimization
+- 📍 Spatial Candidate Clustering
+- ⭐ Multi-Criteria Decision Scoring
+- 🛣️ A* Route Optimization
+- 🎨 Automatic Heatmap Generation
+- 📈 Comparative Dashboard
 
 ---
 
-# 📊 Demo Results
+# 📋 Sample Output
 
-| Metric | Value |
-|---------|-------|
-| 🏠 Habitat Site | **(303, 264)** |
-| ⛏️ Mining Site | **(311, 200)** |
-| ☀️ Habitat Illumination | **56.56%** |
-| 💧 Water-Ice Probability | **0.9510** |
-| 🛣️ Route Length | **72 Cells (~7200 m)** |
-| ⭐ Combined Score | **0.6863** |
-
-### Scoring Formula
+The pipeline generates a report (`outputs/result.txt`) containing the selected locations and evaluation metrics.
 
 ```text
-score = 0.5 × illumination
-      + 0.5 × water_ice
-      - 0.001 × path_length
+Optimal Pair Found with Combined Score: 0.6863
+
+--- Optimal Habitat Site ---
+Coordinates (303,264)
+Avg Illumination : 56.56%
+Terrain Roughness : 2.5955 m
+
+--- Optimal Mining Site ---
+Coordinates (311,200)
+Avg Water-Ice : 0.9510
+Terrain Roughness : 2.0769 m
+
+--- Power Cable Path ---
+Path Length : 72 cells (7200 m)
 ```
 
 ---
 
-# 🖼️ Visual Results
+# 📈 Dataset Statistics
 
-## Comparative Dashboard
-
-![Comparative Dashboard](screenshots/comparative_dashboard.png)
-
----
-
-## Optimal Habitat & Mining Sites
-
-Green = Habitat
-
-Cyan = Mining
-
-Yellow = Optimal Route
-
-![Optimal Sites](screenshots/optimal_sites_map.png)
+| Property | Value |
+|-----------|-------|
+| Number of CSV Files | 4 |
+| Grid Size | 500 × 500 |
+| Total Cells Processed | 1,000,000 |
+| Sliding Window | 5 × 5 |
+| Candidate Pool | Top 3000 |
+| Pathfinding | A* |
+| Elevation Constraint | 22 m |
 
 ---
 
-## Terrain Heatmaps
-
-| Elevation | Illumination |
-|:---------:|:------------:|
-| ![](screenshots/elevation_heatmap.png) | ![](screenshots/illumination_heatmap.png) |
-
-| Water-Ice | Signal Occultation |
-|:---------:|:------------------:|
-| ![](screenshots/water_ice_heatmap.png) | ![](screenshots/signal_occultation_heatmap.png) |
-
----
-
-# ⚙️ Pipeline Overview
+# 📊 Data Analytics Pipeline
 
 ```text
 CSV Files
      │
      ▼
-Data Cleaning & Validation
+Data Cleaning
+     │
+     ▼
+Validation
      │
      ▼
 2D Prefix Sum Statistics
      │
      ▼
-Candidate Ranking
+Top-K Candidate Ranking
      │
      ▼
 Spatial Clustering
      │
      ▼
-Multi-Criteria Optimization
+Multi-Criteria Scoring
      │
      ▼
 A* Pathfinding
      │
      ▼
-Result Generation
-     │
-     ├── result.txt
-     ├── candidates.txt
-     └── visualization/
+Reports & Visualizations
 ```
 
 ---
 
-# 📂 Project Structure
+# 🧠 Algorithms Used
+
+| Algorithm | Purpose |
+|------------|---------|
+| 2D Prefix Sums | Efficient Sliding Window Statistics |
+| Mean & Standard Deviation | Terrain Roughness |
+| Top-K Ranking | Candidate Selection |
+| Spatial Clustering | Geographic Diversity |
+| Weighted Scoring | Habitat–Mining Pair Evaluation |
+| A* Search | Shortest Feasible Route |
+
+---
+
+# 🎨 Visualization Outputs
+
+| Output | Description |
+|----------|------------|
+| `outputs/result.txt` | Final analytical report |
+| `outputs/candidates.txt` | Ranked candidate locations |
+| `outputs/visualization/comparative_dashboard.bmp` | Dashboard |
+| `outputs/visualization/optimal_sites_map.bmp` | Habitat & Mining Map |
+| `outputs/visualization/elevation_heatmap.bmp` | Elevation |
+| `outputs/visualization/illumination_heatmap.bmp` | Illumination |
+| `outputs/visualization/water_ice_heatmap.bmp` | Water Ice |
+| `outputs/visualization/signal_occultation_heatmap.bmp` | Signal Occultation |
+
+---
+
+# 📍 Optimal Habitat & Mining Sites
+
+The final solution selected by the optimization pipeline.
+
+| Marker | Description |
+|--------|-------------|
+| 🟢 Green Circle | Optimal Habitat |
+| 🔷 Cyan Circle | Optimal Mining |
+| 🟡 Yellow Line | Power Cable Route |
+| ⚪ White Outline | Selected Sites |
+| 🌞 Background | Illumination Heatmap |
+
+<p align="center">
+<img src="screenshots/optimal_sites_map.png" width="700">
+</p>
+
+---
+
+# 🌍 Terrain Heatmaps
+
+All heatmaps use the same normalized color scale.
 
 ```text
-Optimal-Moon-Landing
+Blue → Cyan → Green → Yellow → Red
+Low                         High
+```
+
+| Color | Meaning |
+|--------|---------|
+| 🔵 Blue | Lowest Values |
+| 🔷 Cyan | Low–Medium |
+| 🟢 Green | Medium |
+| 🟡 Yellow | Medium–High |
+| 🔴 Red | Highest Values |
+
+Normalization
+
+```text
+t = (value − min)/(max − min)
+```
+
+---
+
+## Elevation & Illumination
+
+<p align="center">
+<img src="screenshots/elevation_heatmap.png" width="320"/>
+<img src="screenshots/illumination_heatmap.png" width="320"/>
+</p>
+
+<p align="center">
+<b>Elevation</b>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<b>Illumination</b>
+</p>
+
+---
+
+## Water Ice & Signal Occultation
+
+<p align="center">
+<img src="screenshots/water_ice_heatmap.png" width="320"/>
+<img src="screenshots/signal_occultation_heatmap.png" width="320"/>
+</p>
+
+<p align="center">
+<b>Water Ice</b>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<b>Signal Occultation</b>
+</p>
+
+---
+
+# 📊 Comparative Dashboard
+
+The dashboard combines all generated visualizations into a single analytical view.
+
+<p align="center">
+<img src="screenshots/comparative_dashboard.png" width="900">
+</p>
+
+---
+
+# 🎨 Visualization Legend
+
+## Terrain Heatmaps
+
+```text
+Blue → Cyan → Green → Yellow → Red
+Low                         High
+```
+
+| Heatmap | Blue | Red |
+|----------|------|-----|
+| Elevation | Lower Terrain | Higher Terrain |
+| Illumination | Less Sunlight | More Sunlight |
+| Water Ice | Lower Ice Probability | Higher Ice Probability |
+| Signal Occultation | Lower Occultation | Higher Occultation |
+
+---
+
+## Optimal Sites Map
+
+| Marker | Meaning |
+|--------|---------|
+| 🟢 Green Circle | Habitat |
+| 🔷 Cyan Circle | Mining |
+| 🟡 Yellow Line | Power Cable Route |
+| ⚪ White Outline | Selected Locations |
+
+---
+
+## Dashboard Metrics
+
+| Color | Metric |
+|--------|--------|
+| 🟢 Green | Habitat Illumination |
+| 🔷 Cyan | Water-Ice Probability |
+| 🟡 Yellow | Path Length *(shorter is better)* |
+| 🟠 Orange | Combined Score |
+
+---
+
+# 📂 Repository Structure
+
+```text
+Geospatial-Site-Selection-and-Route-Optimization
 │
-├── main.cpp
-├── step1_csv.hpp
-├── step2_stats.hpp
-├── step3_pathfinding.hpp
-├── step4_result.hpp
-├── step5_visualization.hpp
-│
-├── elevation.csv
-├── illumination.csv
-├── water_ice.csv
-├── signal_occultation.csv
-│
-├── screenshots/
 ├── README.md
+├── LICENSE
 ├── .gitignore
-└── LICENSE
+│
+├── src/
+│   ├── main.cpp
+│   ├── step1_csv.hpp
+│   ├── step2_stats.hpp
+│   ├── step3_pathfinding.hpp
+│   ├── step4_result.hpp
+│   └── step5_visualization.hpp
+│
+├── data/
+│   ├── elevation.csv
+│   ├── illumination.csv
+│   ├── water_ice.csv
+│   └── signal_occultation.csv
+│
+├── outputs/
+│   ├── result.txt
+│   ├── candidates.txt
+│   └── visualization/
+│       ├── comparative_dashboard.bmp
+│       ├── optimal_sites_map.bmp
+│       ├── elevation_heatmap.bmp
+│       ├── illumination_heatmap.bmp
+│       ├── water_ice_heatmap.bmp
+│       ├── signal_occultation_heatmap.bmp
+│       └── legend.txt
+│
+└── screenshots/
+    ├── comparative_dashboard.png
+    ├── optimal_sites_map.png
+    ├── elevation_heatmap.png
+    ├── illumination_heatmap.png
+    ├── water_ice_heatmap.png
+    └── signal_occultation_heatmap.png
 ```
 
 ---
 
 # 🚀 Build & Run
 
-### Requirements
-
-- C++17 Compiler
-- No External Libraries
-
 ### Compile
 
 ```bash
-g++ -std=c++17 -O2 main.cpp -o moon_landing
+g++ -O2 -std=c++17 src/main.cpp -o moon_landing
 ```
 
 ### Run
 
-**Linux / macOS**
+Linux / macOS
 
 ```bash
 ./moon_landing
 ```
 
-**Windows**
+Windows
 
 ```bash
 moon_landing.exe
@@ -190,90 +338,35 @@ moon_landing.exe
 
 ---
 
-# 📁 Generated Outputs
-
-| Output | Description |
-|----------|------------|
-| `result.txt` | Final optimal habitat & mining report |
-| `candidates.txt` | Ranked candidate locations |
-| `visualization/*.bmp` | Generated terrain heatmaps |
-| Dashboard | Automatically generated comparison dashboard |
-
----
-
-# 📊 Input Data
-
-| Dataset | Description |
-|----------|------------|
-| elevation.csv | Terrain Elevation |
-| illumination.csv | Solar Illumination |
-| water_ice.csv | Water-Ice Probability |
-| signal_occultation.csv | Communication Visibility |
-
-Each dataset contains a **500 × 500** raster grid representing approximately **250,000 spatial cells**.
-
----
-
-# 🧠 Algorithms Used
-
-- CSV Parsing
-- Data Cleaning & Validation
-- ETL Processing
-- Sliding Window Statistics
-- 2D Prefix Sums
-- Standard Deviation
-- Spatial Clustering
-- Multi-Criteria Optimization
-- A* Search Algorithm
-
----
-
 # 💻 Tech Stack
 
 | Category | Technology |
-|-----------|------------|
+|------------|------------|
 | Language | C++17 |
 | Data Processing | CSV |
-| Analytics | Statistics |
-| Algorithms | A* Search, Prefix Sums |
-| Visualization | Pure C++ BMP Generator |
+| Analytics | ETL-style Pipeline |
+| Statistics | Mean & Standard Deviation |
+| Algorithms | 2D Prefix Sums, A* Search |
+| Optimization | Spatial Clustering |
+| Visualization | Pure C++ BMP Rendering |
 
 ---
 
-# 📄 Sample Output
+# 🎓 Learning Outcomes
 
-```text
-Optimal Pair Found with Combined Score: 0.6863
+This project demonstrates practical implementation of:
 
-Optimal Habitat Site
-Coordinates : (303,264)
-
-Average Illumination : 56.56%
-
-Optimal Mining Site
-Coordinates : (311,200)
-
-Average Water-Ice Probability : 0.9510
-
-Path Length : 72 Cells (7200 m)
-```
-
----
-
-# 🌟 Highlights
-
-- 📊 Geospatial Data Analytics
-- 🛰️ Spatial Site Selection
-- 📈 Statistical Analysis
-- 🧮 Algorithm Design
-- 🗺️ Route Optimization
-- 🎨 Data Visualization
-- ⚡ Modern C++17
+- Large-scale CSV Processing
+- Data Cleaning & Validation
+- ETL Pipeline Design
+- Statistical Analysis
+- Spatial Data Analytics
+- Graph Search Algorithms
+- Performance Optimization
+- Automated Visualization
 
 ---
 
 # 📜 License
 
-This project is intended for **educational, research, and portfolio purposes**.
-
-If you find this project useful, consider giving it a ⭐ on GitHub.
+This project is intended for educational, research, and portfolio purposes.
