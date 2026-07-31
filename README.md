@@ -162,7 +162,8 @@ Yellow = Power Cable Route
 
 Background = Illumination Heatmap
 
-![Optimal Sites](screenshots/optimal_sites_map.png)
+<img width="250" height="250" alt="optimal_sites_map" src="https://github.com/user-attachments/assets/4de05a8c-ffc0-4cc1-aa55-6353676a525e" />
+
 
 ---
 
