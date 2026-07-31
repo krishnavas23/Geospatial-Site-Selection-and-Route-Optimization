@@ -1,0 +1,661 @@
+================================================================================
+         OPTIMAL MOON LANDING — INTERVIEW HELPER (COMPLETE GUIDE)
+================================================================================
+
+Read this file front to back. By the end you will be able to walk any
+interviewer through the entire project — confidently, impressively, and without
+ever needing to look at the code.
+
+The guide is organized as a conversation: the way you would actually speak.
+Sections marked [SAY THIS] are ready-made sentences you can use verbatim.
+
+================================================================================
+PART A — THE 30-SECOND PITCH (say this first, always)
+================================================================================
+
+[SAY THIS]
+"I built a C++ geospatial optimization tool that solves a real problem in
+lunar mission planning. The Moon has sunlight in some areas and water ice in
+others — rarely in the same place. My program reads four 500-by-500 satellite
+raster maps, identifies the best habitat site for sunlight, the best mining
+site for water ice, and finds the shortest slope-safe cable route between them
+using A-star pathfinding. It outputs the optimal pair with a combined score."
+
+That's it. 30 seconds. Now the interviewer will ask follow-ups — the rest of
+this file prepares you for every one of them.
+
+
+================================================================================
+PART B — THE PROBLEM (why this project exists)
+================================================================================
+
+Real-world context
+------------------
+Future lunar bases need two things:
+  1. Sunlight — for solar power (habitat site)
+  2. Water ice — for drinking, oxygen, and rocket fuel (mining site)
+
+These resources are NOT in the same location on the Moon. So a mission planner
+must answer three questions:
+  - Where is the best habitat?
+  - Where is the best mining outpost?
+  - Can we connect them with a power cable across terrain a rover can handle?
+
+My program answers all three automatically.
+
+
+What the program actually does (plain English)
+----------------------------------------------
+1. Reads four Moon maps (CSV grids, 500 rows x 500 columns each):
+     - elevation    → ground height in meters
+     - illumination → sunlight fraction (0 to 1)
+     - water_ice    → water-ice probability (0 to 1)
+     - signal_occultation → communication data (loaded but NOT used in logic)
+
+2. For every 5x5 patch on the map, computes:
+     - average illumination (or water) → how good the patch is
+     - elevation standard deviation    → how rough/bumpy the terrain is
+
+3. Picks the best patches, spreads them geographically (clustering).
+
+4. For the top 50 habitat sites x top 50 mining sites (up to 2500 pairs):
+     - Prunes hopeless pairs with an optimistic bound
+     - Runs A* pathfinding between the pair on the elevation grid
+     - Scores the pair: 0.5 * illumination + 0.5 * water - 0.001 * path_length
+
+5. Writes the winning pair and path length to result.txt.
+
+
+Key numbers to memorize
+------------------------
+  Grid size:            500 x 500 = 250,000 cells
+  Cell size:            ~100 m x 100 m (inferred from output: 72 cells = 7200 m)
+  Map area:             ~50 km x 50 km
+  5x5 windows:          496 x 496 = 246,016
+  Candidates kept:      top 3,000 then spatial clustering
+  Pairs evaluated:      top 50 x 50 = up to 2,500
+  A* budget:            max 2,000 runs
+  Slope constraint:     |elevation_diff| <= 22 meters between adjacent cells
+  Score formula:        0.5*I + 0.5*W - 0.001*L
+  Actual result:        Habitat (303,264), Mining (311,200), path 72, score 0.6863
+
+
+================================================================================
+PART C — THE ARCHITECTURE (files and what they do)
+================================================================================
+
+There are 5 source files and 4 data files. No build system, no dependencies
+beyond the C++ standard library.
+
+File-by-file breakdown (learn in THIS order)
+---------------------------------------------
+
+FILE 1: step1_csv.hpp — "The Data Loader"
+  - load_csv(path) → reads a CSV file into vector<vector<float>>
+  - Validates: file exists, all rows same width, all values numeric
+  - On ANY error → prints message and exit(1) — no recovery
+  - Empty cell → 0.0, whitespace trimmed
+  - print_sample() → shows map name, dimensions, top-left 5x5 corner
+
+  [SAY THIS]
+  "Step 1 is just I/O. I parse four CSV files into 2D float arrays with
+  validation — if any file is missing or malformed the program fails fast."
+
+
+FILE 2: step2_stats.hpp — "The Brain of Site Selection"
+  Three things here:
+
+  a) Candidate struct
+     { r, c, avg, rough }
+     r,c = grid position (center of a 5x5 window)
+     avg = mean illumination OR mean water-ice (depends on which analysis)
+     rough = elevation standard deviation (terrain bumpiness)
+
+  b) Prefix2D struct — the performance trick
+     Builds two prefix-sum tables over the grid:
+       S  → cumulative sum       (for computing mean)
+       SS → cumulative sum of squares (for computing std dev)
+     Both are (R+1)x(C+1) in double precision.
+
+     With these tables, I can compute the mean and std dev of ANY 5x5 block
+     in O(1) using the inclusion-exclusion formula:
+       rect_sum = P[r2][c2] - P[r1-1][c2] - P[r2][c1-1] + P[r1-1][c1-1]
+       mean = sum / 25
+       variance = max(0, sumOfSquares/25 - mean^2)
+       roughness = sqrt(variance)
+
+     Without prefix sums: 246,016 windows x 25 cells = ~6 million additions
+     With prefix sums: 246,016 windows x 4 lookups = ~1 million lookups
+     That is why I use them.
+
+  c) select_candidates() — the filtering pipeline
+     Step 1: Slide 5x5 window over entire grid → 246,016 candidates
+     Step 2: Sort by avg descending (tie-break: lower roughness)
+     Step 3: Keep top 3,000
+     Step 4: Spatial clustering — divide map into 25x25 cell buckets,
+             keep only the BEST candidate per bucket
+     This prevents all top picks from clustering in one bright/icy region.
+
+  [SAY THIS]
+  "Step 2 is where the real algorithmic work happens. I use 2D prefix sums
+  to compute mean and standard deviation of any 5x5 patch in constant time.
+  Then I rank 246,000 patches, keep the top 3,000, and apply grid-based
+  spatial clustering to ensure geographic diversity."
+
+
+FILE 3: step3_pathfinding.hpp — "The Route Finder"
+  Implements A* (A-star) shortest path on the elevation grid.
+
+  How it works:
+  - 4-connected grid (up/down/left/right), each step costs 1
+  - An edge is BLOCKED if |elevation[current] - elevation[neighbor]| > 22 m
+  - Heuristic: Manhattan distance to goal
+    (admissible because on a 4-connected unit-cost grid, true path >= Manhattan)
+  - Uses a min-heap priority queue ordered by f = g + h
+  - Lazy deletion: pushes duplicates, skips via seen[] array
+  - Returns path LENGTH only (not the actual route cells)
+  - Returns 1e9 (infinity) if no path exists
+
+  [SAY THIS]
+  "Step 3 runs A* pathfinding between a habitat and mining site. The key
+  constraint is a 22-meter maximum slope between adjacent cells — modeling
+  what a rover or power cable can physically handle. Manhattan distance is
+  the heuristic, which is admissible for a 4-connected unit-cost grid, so
+  A* guarantees the optimal path length."
+
+
+FILE 4: step4_result.hpp — "The Scorer and Reporter"
+  Two small functions:
+
+  score_pair(habitat, mining, path_length):
+    return 0.5 * habitat.avg + 0.5 * mining.avg - 0.001 * path_length
+
+    Equal weight to sunlight and water. Small penalty per path cell to
+    prefer shorter cable routes.
+
+  write_result(filename, score, habitat, mining, path_len):
+    Writes a human-readable report:
+      - Combined score (4 decimal places)
+      - Habitat coordinates, illumination as PERCENTAGE (avg * 100)
+      - Mining coordinates, water-ice probability
+      - Roughness for both (in meters)
+      - Path length in cells and meters (cells * 100)
+
+  [SAY THIS]
+  "Step 4 defines the objective function — a weighted sum of illumination,
+  water-ice, and path penalty — and writes the final report."
+
+
+FILE 5: main.cpp — "The Orchestrator"
+  Wires everything together:
+
+  1. Load four CSVs                          (step1)
+  2. Print 5x5 samples for sanity check      (step1)
+  3. Build 3 prefix tables: illum, water, elev  (step2)
+  4. Generate habitat pool (illum + elev roughness)  (step2)
+  5. Generate mining pool  (water + elev roughness)  (step2)
+  6. Sort both pools, write candidates.txt    (step2)
+  7. Pair evaluation loop:                    (step3 + step4)
+       for top 50 habitat x top 50 mining:
+         a) Compute optimistic score using Manhattan distance
+         b) If optimistic <= bestScore → SKIP (branch-and-bound prune)
+         c) Run A* → get path length
+         d) If no path → skip
+         e) score_pair() → update best if improved
+         f) Stop after 2,000 A* calls (MAX_EVAL)
+  8. Write result.txt                         (step4)
+
+  [SAY THIS]
+  "main.cpp is the pipeline controller. The interesting optimization here
+  is branch-and-bound pruning: before every expensive A* call, I compute an
+  optimistic upper bound on the pair's score using Manhattan distance. Since
+  the real path is always >= Manhattan, the real score is always <= the
+  optimistic bound. If even the optimistic bound can't beat my current best,
+  I skip A* entirely. This avoids hundreds of unnecessary pathfinding calls."
+
+
+================================================================================
+PART D — THE ALGORITHMS (what interviewers really want to hear)
+================================================================================
+
+ALGORITHM 1: 2D Prefix Sums (Summed-Area Table)
+------------------------------------------------
+What: Precompute cumulative sums so any rectangle query is O(1).
+Where: step2_stats.hpp, Prefix2D struct
+Why:  Need mean and std dev for 246,016 windows of 25 cells each.
+How:  Two tables (sum and sum-of-squares). Build in O(R*C).
+      Query any rectangle with 4 lookups using inclusion-exclusion.
+Time: Build O(R*C) = O(250,000). Query O(1).
+Space: O(R*C) per table, 3 maps x 2 tables = 6 tables.
+
+  Inclusion-exclusion formula:
+    rect_sum(r1,c1,r2,c2) = P[r2][c2] - P[r1-1][c2] - P[r2][c1-1] + P[r1-1][c1-1]
+
+  Variance formula:
+    mean = S / 25
+    variance = max(0, SS/25 - mean^2)
+    std_dev = sqrt(variance)
+
+  Why max(0, ...)?  Floating-point arithmetic can produce tiny negative
+  variance. Clamping to 0 before sqrt prevents NaN.
+
+  Why double for prefix tables but float for grids?
+  Prefix sums accumulate 500 values — double reduces rounding error.
+
+
+ALGORITHM 2: Top-K Selection + Spatial Clustering
+--------------------------------------------------
+What: Reduce 246,016 candidates to a diverse short-list.
+Where: step2_stats.hpp, select_candidates()
+Why:  Can't run A* on all 246K^2 possible pairs.
+How:  Sort all by avg descending → keep top 3,000 → grid-bucket
+      deduplication (one winner per 25x25 cell region).
+Time: O(N log N) for sort where N = 246,016.
+Alternative: nth_element for O(N) average — not used but would be faster.
+
+
+ALGORITHM 3: A* (A-Star) Pathfinding
+--------------------------------------
+What: Find shortest slope-feasible path between two grid cells.
+Where: step3_pathfinding.hpp
+Why:  Need actual path length (not just Manhattan) to score pairs fairly.
+How:
+  - State: (row, col) on 500x500 grid
+  - Moves: 4 directions (up/down/left/right), cost 1 each
+  - Constraint: |elev[current] - elev[neighbor]| <= 22 m
+  - Heuristic: Manhattan distance (admissible → A* is optimal)
+  - Data structures: flat g[] array (250K floats), seen[] array,
+    min-heap priority queue
+  - Termination: goal popped from PQ → return g (optimal length)
+  - Failure: PQ empty → return 1e9 (infinity)
+Time: O(V log V) worst case, V = 250,000. Usually much less with heuristic.
+Space: O(V) for g[] and seen[].
+
+  Why A* over BFS?
+  BFS also works on unweighted grids, but A* expands fewer nodes by
+  prioritizing cells closer to the goal (via heuristic).
+
+  Why Manhattan heuristic?
+  On a 4-connected grid with unit costs, Manhattan distance NEVER
+  overestimates the true shortest path → admissible → A* is optimal.
+
+  Why not Dijkstra?
+  Dijkstra is A* with h=0. Same correctness, but explores more nodes.
+
+
+ALGORITHM 4: Branch-and-Bound Pruning
+---------------------------------------
+What: Skip A* when a pair provably can't beat the current best.
+Where: main.cpp, pair evaluation loop
+Why:  A* is the bottleneck (~15-20 sec total for up to 2000 calls).
+How:
+  optimistic = 0.5*Hc.avg + 0.5*Mc.avg - 0.001*manhattan(Hc, Mc)
+
+  Since real_path >= manhattan:
+    real_score = 0.5*I + 0.5*W - 0.001*real_path
+              <= 0.5*I + 0.5*W - 0.001*manhattan
+              =  optimistic
+
+  If optimistic <= bestScore, no need to run A*. Safe to skip.
+
+  This is the classic branch-and-bound technique: use a cheap lower bound
+  on cost (or upper bound on benefit) to prune the search space.
+
+
+================================================================================
+PART E — THE MATH (formulas you must know)
+================================================================================
+
+1. Mean of 5x5 block
+   mean = (1/25) * sum_of_25_values
+
+2. Population standard deviation of 5x5 block
+   variance = E[X^2] - (E[X])^2 = sumOfSquares/25 - mean^2
+   std_dev  = sqrt( max(0, variance) )
+
+3. Inclusion-exclusion for rectangle sum
+   sum(r1,c1 to r2,c2) = P[r2][c2] - P[r1-1][c2] - P[r2][c1-1] + P[r1-1][c1-1]
+   (P is a 1-indexed prefix table)
+
+4. Manhattan distance
+   d = |r1-r2| + |c1-c2|
+
+5. Combined score
+   score = 0.5 * habitat_illumination + 0.5 * mining_water - 0.001 * path_length
+
+6. Worked example (the actual winning pair):
+   Habitat (303,264): illumination avg = 0.5656
+   Mining  (311,200): water-ice avg   = 0.9510
+   Path length: 72 cells
+
+   score = 0.5 * 0.5656  +  0.5 * 0.9510  -  0.001 * 72
+         = 0.2828        +  0.4755        -  0.072
+         = 0.6863  <-- matches result.txt exactly
+
+
+================================================================================
+PART F — DATA STRUCTURES AND WHY EACH WAS CHOSEN
+================================================================================
+
+  vector<vector<float>>    → CSV grids. Natural 2D representation.
+  vector<vector<double>>   → Prefix tables. Double to reduce sum accumulation error.
+  struct Candidate          → Groups (r, c, avg, rough) together.
+  struct Prefix2D           → Encapsulates prefix tables + query methods.
+  struct AStarNode          → (r, c, f, g) for the priority queue.
+  priority_queue (min-heap) → A* open set. Efficiently extract lowest-f node.
+  vector<float> (flat)      → A* g[] costs. O(1) index via r*C+c. Cache-friendly.
+  vector<char>              → A* seen[] flags. Compact boolean.
+  vector<vector<bool>>      → Cluster bucket occupancy. Fast O(1) lookup.
+  pair<int,int>             → Start/goal coordinates for A*.
+  Lambda functions          → Comparators, heuristics, index mapping.
+
+  Why not map/set?         → Grid indices are dense integers. Arrays beat hash maps.
+  Why not BFS queue?       → A* with heuristic explores fewer nodes.
+
+
+================================================================================
+PART G — THE EXECUTION TRACE (follow the winning pair through the code)
+================================================================================
+
+Step 1: main() loads four 500x500 CSVs into memory.
+
+Step 2: Prints 5x5 corner of each map to console.
+
+Step 3: Builds Prefix2D for illumination, water, and elevation.
+  Each: two (501x501) double tables — sum and sum-of-squares.
+
+Step 4: select_candidates() for habitat:
+  - Slides 5x5 window, computes avg illumination and elevation roughness
+  - 246,016 candidates generated
+  - Sorted: highest illumination first, lowest roughness on ties
+  - Top 3,000 kept, then clustered into 25x25 buckets
+  - Result: hab_pool (geographically diverse bright sites)
+
+Step 5: Same for mining using water_ice.
+  - Result: min_pool (geographically diverse icy sites)
+
+Step 6: Both pools re-sorted. Top 20 written to candidates.txt.
+
+Step 7: Pair evaluation.
+  Consider habitat (303,264) with illum 0.5656 and mining (311,200) with
+  water 0.9510:
+
+  Manhattan distance = |303-311| + |264-200| = 8 + 64 = 72
+
+  Optimistic score = 0.5*0.5656 + 0.5*0.9510 - 0.001*72 = 0.6863
+  This exceeds current best → proceed with A*.
+
+  A* starts at (303,264), goal (311,200).
+  Explores cells respecting slope <= 22m.
+  Finds path of length 72 (equals Manhattan → terrain is smooth here).
+
+  score_pair = 0.5*0.5656 + 0.5*0.9510 - 0.001*72 = 0.6863
+  New best! Update bestScore, bestHab, bestMin, bestPath.
+
+Step 8: write_result("result.txt", 0.6863, habitat, mining, 72)
+  Output:
+    Avg Illumination: 56.56%
+    Avg Water-Ice Probability: 0.9510
+    Path Length: 72 cells (7200 m)
+
+
+================================================================================
+PART H — WHY THE BEST ILLUMINATION SITE DIDN'T WIN
+================================================================================
+
+[SAY THIS — interviewers love this kind of insight]
+
+"The top habitat by illumination alone is (129,424) with avg 0.594. But my
+optimizer doesn't pick the best individual sites — it picks the best PAIR.
+When (129,424) is paired with top mining sites, either the paths are too long
+(high penalty) or slopes block the route entirely. (303,264) at 0.566 wins
+because it pairs with (311,200) which has 0.951 water ice and a short,
+feasible 72-cell path. The combined score 0.6863 beats any pair involving
+the brighter site."
+
+
+================================================================================
+PART I — THINGS THE PROJECT DOESN'T DO (mention proactively = maturity)
+================================================================================
+
+1. signal_occultation.csv is loaded but NEVER USED in any algorithm.
+   Likely planned for a communication-quality feature.
+
+2. A* returns path LENGTH, not the actual path cells.
+   No route visualization or coordinate export.
+
+3. MAX_EVAL = 2000 means the program may miss the globally optimal pair
+   if it would be found after 2,000 A* evaluations.
+
+4. All weights and thresholds are hardcoded (0.5, 0.5, 0.001, 22m, 3000, 25).
+   No CLI arguments or config file.
+
+5. No build system (Makefile/CMake). Compile manually:
+   g++ -O2 -std=c++17 main.cpp -o moon_landing
+
+6. bits/stdc++.h is used — non-portable, competitive-programming style.
+
+7. Grid dimension consistency across the four CSVs is NOT validated.
+
+[SAY THIS]
+"I'm aware of these limitations. If I were to extend this, I'd integrate
+the signal data into habitat scoring, add path reconstruction for
+visualization, parallelize the A* evaluations, and make the weights
+configurable via command-line arguments."
+
+
+================================================================================
+PART J — IMPROVEMENTS YOU'D PROPOSE (shows engineering maturity)
+================================================================================
+
+  Improvement                         Why                  Difficulty
+  -------------------------------------------------------------------
+  Use signal_occultation in scoring   Data already loaded   Medium
+  CLI arguments for weights           Flexibility           Easy
+  Path reconstruction + export        Visualization         Medium
+  CMakeLists.txt / Makefile           Reproducible builds   Easy
+  Replace full sort with nth_element  Faster candidate gen  Easy
+  Parallel A* (OpenMP)                Multi-core speedup    Medium
+  Pareto frontier analysis            Better trade-offs     Hard
+  Unit tests                          Regression safety     Medium
+  Replace bits/stdc++.h               Portability           Easy
+  Cross-validate grid dimensions      Prevent silent bugs   Easy
+
+
+================================================================================
+PART K — COMPLEXITY SUMMARY TABLE
+================================================================================
+
+  Phase                    Time Complexity         Space
+  ---------------------------------------------------------------
+  CSV loading              O(R * C) per file       O(R * C)
+  Prefix table build       O(R * C) per map        O(R * C)
+  Candidate generation     O(R * C)                O(R * C)
+  Candidate sorting        O(N log N), N=246K      O(1) in-place
+  Spatial clustering       O(K), K=3000            O(buckets)
+  A* (single call)         O(V log V), V=250K      O(V)
+  Pair evaluation          O(evals * V log V)      O(V)
+  Total bottleneck         O(2000 * V log V)       O(V)
+
+  Runtime on bundled data: ~15-20 seconds.
+
+
+================================================================================
+PART L — RESUME BULLET POINT
+================================================================================
+
+Optimal Moon Landing Site Selector — Built a C++ geospatial optimization
+pipeline processing 500x500 lunar terrain rasters (elevation, illumination,
+water-ice) to recommend optimal habitat and mining locations connected by a
+slope-constrained shortest path. Implemented 2D prefix-sum statistics, top-K
+spatial clustering, A* pathfinding with admissible heuristics, and
+branch-and-bound pruning — reducing search from 246K candidate windows to a
+scored, reproducible mission plan.
+
+
+================================================================================
+PART M — THE INTERVIEW FLOW (follow this order when explaining)
+================================================================================
+
+1. PROBLEM  → "Moon needs sunlight AND water, but they're in different places."
+2. INPUT    → "Four 500x500 CSV raster maps. Three used, one loaded but unused."
+3. CANDIDATE GENERATION → "5x5 windows, prefix sums for O(1) stats, top-3000,
+                           25x25 spatial clustering for diversity."
+4. PAIRING  → "Top 50 x 50 pairs. Optimistic prune with Manhattan bound.
+               A* with 22m slope cap. 2000-call budget."
+5. OBJECTIVE → "0.5*illumination + 0.5*water - 0.001*path_length."
+6. RESULT   → "Habitat (303,264) 56.6% sun, Mining (311,200) 95.1% water,
+               72-cell path, score 0.6863."
+7. LIMITATIONS → "Signal data unused, no path export, eval cap, hardcoded weights."
+8. IMPROVEMENTS → "Parallelize A*, integrate signal data, add CLI config."
+
+
+================================================================================
+PART N — TOP 25 INTERVIEW QUESTIONS AND KILLER ANSWERS
+================================================================================
+
+Q1: What does this project do?
+A: It reads lunar terrain data and finds the optimal pair of sites — one for a
+   habitat (maximizing sunlight) and one for mining (maximizing water ice) —
+   connected by a slope-safe power cable route, using A* pathfinding.
+
+Q2: Why not just pick the brightest spot and the iciest spot independently?
+A: Because they need to be CONNECTED. A pair with slightly lower individual
+   scores but a short, feasible path can beat a pair with great individual
+   scores but no traversable route.
+
+Q3: What is a prefix sum and why do you use it?
+A: A prefix sum is a precomputed cumulative table. By building it once in O(n),
+   I can answer any rectangle sum query in O(1) using inclusion-exclusion.
+   I need this because I evaluate 246,016 windows of 25 cells each — doing
+   this naively would be 25x slower.
+
+Q4: Why TWO prefix tables (S and SS)?
+A: S gives me the sum (for computing mean). SS gives me the sum of squares
+   (for computing variance via E[X^2] - E[X]^2). One table alone cannot
+   compute standard deviation in O(1).
+
+Q5: What is terrain roughness and why does it matter?
+A: It's the standard deviation of elevation in a 5x5 patch. Rough terrain is
+   hard to build on. Lower roughness is preferred as a tiebreaker.
+
+Q6: Explain A* in this project.
+A: It finds the shortest path on a 4-connected grid where each step costs 1.
+   An edge is blocked if the elevation difference exceeds 22 meters. The
+   heuristic is Manhattan distance, which is admissible, so A* is optimal.
+
+Q7: Why is Manhattan distance admissible here?
+A: On a 4-connected grid with unit costs, the true shortest path always has
+   length >= Manhattan distance. So the heuristic never overestimates, which
+   is the definition of admissible.
+
+Q8: What is the slope constraint modeling?
+A: Physical limits of a rover or power cable deployment. If two adjacent cells
+   differ by more than 22 meters in height, a vehicle can't traverse that step.
+
+Q9: Explain the scoring formula.
+A: score = 0.5 * illumination + 0.5 * water - 0.001 * path_length.
+   Equal weight to both resources. Small distance penalty to prefer shorter
+   cable routes without dominating the score.
+
+Q10: Walk me through the branch-and-bound pruning.
+A: Before running A*, I compute an optimistic score using Manhattan distance
+   (which underestimates path length). If even this optimistic score can't
+   beat my current best, the real score definitely can't either, so I skip
+   the expensive A* call. Mathematically: real_path >= manhattan → real_score
+   <= optimistic_score.
+
+Q11: What is spatial clustering and why is it needed?
+A: After sorting candidates by score, many top picks cluster in one region.
+   I divide the map into 25x25 buckets and keep only the best candidate per
+   bucket. This ensures geographic diversity in the shortlist.
+
+Q12: What is signal_occultation.csv?
+A: It's loaded and printed as a sample but never used in any algorithm. Likely
+   intended for evaluating communication quality at habitat sites.
+
+Q13: What happens if no valid path exists between a pair?
+A: A* returns infinity (1e9). The pair loop detects path_len >= 1e8 and skips
+   that pair. If ALL pairs are unreachable, result.txt says "No valid pair."
+
+Q14: What is MAX_EVAL and what's its risk?
+A: A hard cap of 2,000 A* evaluations to bound runtime. The risk is that the
+   globally optimal pair might not be evaluated if it falls after the 2,000th
+   call in the iteration order.
+
+Q15: Why did the best illumination site (129,424) not win?
+A: Because scoring optimizes PAIRS, not individual sites. (303,264) at 0.566
+   illumination paired with (311,200) at 0.951 water with a short 72-cell
+   path scores 0.6863, beating any pair involving the brighter site.
+
+Q16: How big is the map in real units?
+A: 500 cells x ~100m/cell = ~50 km x 50 km. The 100m/cell is inferred from
+   the output format: 72 cells = 7200 meters.
+
+Q17: Why header-only files with inline?
+A: Single-command compilation without a build system. All functions are inline
+   to avoid linker errors when included from main.cpp.
+
+Q18: What are the time and space complexities?
+A: Building prefix tables: O(R*C). Candidate sort: O(N log N). A* per call:
+   O(V log V). Total: O(2000 * V log V) where V = 250,000. Space: O(V).
+
+Q19: How would you parallelize this?
+A: Each A* call in the pair loop is independent. I'd use OpenMP to run them
+   in parallel, with an atomic or mutex-protected update to bestScore.
+
+Q20: What would you do differently if you rebuilt this?
+A: Add CLI arguments for weights and thresholds, integrate signal data,
+   reconstruct the actual path for visualization, add unit tests, replace
+   bits/stdc++.h, and validate grid dimension consistency.
+
+Q21: Why float for grids but double for prefix tables?
+A: Grids store raw data — float saves memory. Prefix tables accumulate sums
+   over hundreds of values — double prevents rounding errors.
+
+Q22: Does A* reconstruct the path?
+A: No. It only returns the path length. No parent array is maintained.
+
+Q23: What happens if the CSV files have different dimensions?
+A: The program doesn't validate this. It would cause subtle bugs — wrong
+   statistics or out-of-bounds access. This is a known limitation.
+
+Q24: Could BFS work instead of A*?
+A: Yes, BFS works on unweighted grids. But A* expands fewer nodes because
+   the Manhattan heuristic guides search toward the goal.
+
+Q25: What skills does this project demonstrate?
+A: 2D prefix sums, A* pathfinding, heuristic search, spatial clustering,
+   multi-criteria optimization, branch-and-bound pruning, geospatial raster
+   processing, and modular C++ design.
+
+
+================================================================================
+PART O — FINAL CHEAT SHEET (memorize these 20 facts)
+================================================================================
+
+ 1. Four CSVs, 500x500 each. Three used, signal_occultation ignored.
+ 2. Each cell ~ 100m x 100m. Total map ~ 50 km x 50 km.
+ 3. 5x5 sliding window → 246,016 candidates.
+ 4. Prefix sums: O(R*C) build, O(1) per query.
+ 5. Two tables: S (sum) and SS (sum of squares) for mean + std dev.
+ 6. Variance: E[X^2] - E[X]^2 with max(0,...) guard.
+ 7. Top 3,000 → spatial clustering: one per 25x25 bucket.
+ 8. A* with Manhattan heuristic. 4-connected, unit cost, 22m slope limit.
+ 9. Manhattan is admissible → A* is optimal.
+10. Branch-and-bound: optimistic bound via Manhattan skips useless A* calls.
+11. Score = 0.5*I + 0.5*W - 0.001*L.
+12. Result: Habitat (303,264) 56.56%, Mining (311,200) 95.10%, path 72, score 0.6863.
+13. MAX_EVAL = 2000 caps A* calls (may miss global optimum).
+14. Best illumination site loses because pair + path optimization.
+15. No path reconstruction — only length returned.
+16. Compile: g++ -O2 -std=c++17 main.cpp -o moon_landing
+17. Runtime: ~15-20 seconds.
+18. step1=CSV, step2=stats+candidates, step3=A*, step4=score+output.
+19. Limitations: unused signal data, hardcoded weights, no tests, no build system.
+20. Improvements: parallelize, CLI config, path export, signal integration.
+
+
+================================================================================
+END OF HELPER — you are now ready for any interview question about this project.
+================================================================================

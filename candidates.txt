@@ -1,0 +1,40 @@
+=== Top Habitat Candidates ===
+(129,424)  AvgIllum=0.594  Rough=2.30914
+(128,425)  AvgIllum=0.5924  Rough=2.40754
+(124,425)  AvgIllum=0.582  Rough=6.37441
+(124,424)  AvgIllum=0.5812  Rough=6.19336
+(303,264)  AvgIllum=0.5656  Rough=2.59552
+(299,264)  AvgIllum=0.5588  Rough=4.55396
+(228,112)  AvgIllum=0.544  Rough=2.85055
+(224,112)  AvgIllum=0.5296  Rough=7.00427
+(250,115)  AvgIllum=0.5104  Rough=2.69312
+(253,125)  AvgIllum=0.49  Rough=4.5606
+(299,249)  AvgIllum=0.488  Rough=6.08172
+(300,249)  AvgIllum=0.488  Rough=6.48182
+(244,99)  AvgIllum=0.4856  Rough=4.75511
+(249,125)  AvgIllum=0.4828  Rough=5.55471
+(303,275)  AvgIllum=0.4692  Rough=13.9187
+(115,296)  AvgIllum=0.4632  Rough=2.14598
+(250,99)  AvgIllum=0.4632  Rough=7.52241
+
+=== Top Mining Candidates ===
+(5,86)  AvgWater=0.951  Rough=1.47231
+(359,91)  AvgWater=0.951  Rough=1.48139
+(407,58)  AvgWater=0.951  Rough=1.5848
+(366,20)  AvgWater=0.951  Rough=1.64122
+(129,232)  AvgWater=0.951  Rough=1.66755
+(27,60)  AvgWater=0.951  Rough=1.68824
+(16,46)  AvgWater=0.951  Rough=1.69912
+(463,381)  AvgWater=0.951  Rough=1.72297
+(36,141)  AvgWater=0.951  Rough=1.72668
+(69,241)  AvgWater=0.951  Rough=1.75722
+(12,161)  AvgWater=0.951  Rough=1.78778
+(274,485)  AvgWater=0.951  Rough=1.79025
+(391,24)  AvgWater=0.951  Rough=1.79981
+(370,35)  AvgWater=0.951  Rough=1.80323
+(426,436)  AvgWater=0.951  Rough=1.83907
+(417,424)  AvgWater=0.951  Rough=1.84236
+(17,387)  AvgWater=0.951  Rough=1.84487
+(25,173)  AvgWater=0.951  Rough=1.85242
+(441,28)  AvgWater=0.951  Rough=1.86484
+(399,55)  AvgWater=0.951  Rough=1.86988
