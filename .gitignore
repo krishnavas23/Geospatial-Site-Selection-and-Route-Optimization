@@ -1,0 +1,10 @@
+# Executables
+*.exe
+
+# Generated outputs
+result.txt
+candidates.txt
+visualization/
+
+# Personal helper notes
+helper.txt
