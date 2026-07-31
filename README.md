@@ -31,13 +31,26 @@ The complete workflow follows a **data analytics pipeline** consisting of:
 
 ---
 
-## 📸 Dashboard Preview
+## 📋 Sample Output
 
-<p align="center">
+The pipeline generates a detailed report (`result.txt`) containing the optimal habitat site, mining site, terrain statistics, and route information.
 
-![Dashboard](screenshots/comparative_dashboard.png)
+```text
+Optimal Pair Found with Combined Score: 0.6863
 
-</p>
+--- Optimal Habitat Site ---
+> Coordinates (row, col): (303, 264)
+> Avg Illumination: 56.56%
+> Terrain Roughness (Std Dev): 2.5955 m
+
+--- Optimal Mining Site ---
+> Coordinates (row, col): (311, 200)
+> Avg Water-Ice Probability: 0.9510
+> Terrain Roughness (Std Dev): 2.0769 m
+
+--- Power Cable Path ---
+> Path Length: 72 cells (7200 m)
+```
 
 ---
 
