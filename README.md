@@ -193,22 +193,19 @@ where **t ∈ [0,1]**.
 
 ---
 
-## Elevation & Illumination
+## 🌍 Elevation & Illumination
 
 | Elevation | Illumination |
-|------------|--------------|
-| <img width="250" height="250" alt="elevation_heatmap" src="https://github.com/user-attachments/assets/92d3d424-d876-4ad3-997b-c096b60a2fc9" />
- | <img width="250" height="250" alt="illumination_heatmap" src="https://github.com/user-attachments/assets/38167ef1-3cea-4ecb-9ece-dc8b56bb3f08" />
- |
+|:----------:|:------------:|
+| <img src="https://github.com/user-attachments/assets/92d3d424-d876-4ad3-997b-c096b60a2fc9" width="250"/> | <img src="https://github.com/user-attachments/assets/38167ef1-3cea-4ecb-9ece-dc8b56bb3f08" width="250"/> |
 
 ---
 
-## Water Ice & Signal Occultation
+## 🧊 Water Ice & Signal Occultation
 
 | Water Ice | Signal Occultation |
-|------------|--------------------|
-| <img width="250" height="250" alt="water_ice_heatmap" src="https://github.com/user-attachments/assets/e2a4d303-e858-4bf2-9f00-4f887f276524" />
- | <img width="250" height="250" alt="signal_occultation_heatmap" src="https://github.com/user-attachments/assets/7770d6ff-2118-4b4d-aee6-449c92dc81ef" /> |
+|:----------:|:------------------:|
+| <img src="https://github.com/user-attachments/assets/e2a4d303-e858-4bf2-9f00-4f887f276524" width="250"/> | <img src="https://github.com/user-attachments/assets/7770d6ff-2118-4b4d-aee6-449c92dc81ef" width="250"/> |
 
 ---
 
